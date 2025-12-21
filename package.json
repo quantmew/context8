@@ -1,0 +1,36 @@
+{
+  "name": "context8",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Private codebase context platform for AI coding assistants",
+  "author": "Context8 Team",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.14.2",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @context8/database db:generate",
+    "db:migrate": "pnpm --filter @context8/database db:migrate",
+    "db:push": "pnpm --filter @context8/database db:push",
+    "docker:up": "docker compose -f deploy/docker-compose.yml up -d",
+    "docker:down": "docker compose -f deploy/docker-compose.yml down",
+    "docker:logs": "docker compose -f deploy/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.0",
+    "vitest": "^2.1.0",
+    "prettier": "^3.2.0",
+    "eslint": "^9.15.0"
+  }
+}

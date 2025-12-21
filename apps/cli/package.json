@@ -1,0 +1,31 @@
+{
+  "name": "@context8/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "context8": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@context8/database": "workspace:*",
+    "@context8/indexer": "workspace:*",
+    "@context8/llm-service": "workspace:*",
+    "@context8/embedding": "workspace:*",
+    "@context8/vector-store": "workspace:*",
+    "commander": "^12.0.0",
+    "ora": "^8.0.1",
+    "chalk": "^5.3.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@context8/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "context8-mcp": "./dist/bin/local.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "start:local": "node dist/bin/local.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@context8/types": "workspace:*",
+    "@context8/vector-store": "workspace:*",
+    "@context8/database": "workspace:*",
+    "@context8/embedding": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "express": "^4.21.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.3.0"
+  }
+}

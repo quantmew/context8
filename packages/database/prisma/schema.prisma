@@ -1,0 +1,629 @@
+// Context8 Database Schema
+// PostgreSQL with Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Organization
+// ============================================
+
+model Organization {
+  id              String       @id @default(uuid())
+  githubInstallId String       @unique @map("github_install_id")
+  name            String
+  avatarUrl       String?      @map("avatar_url")
+  planTier        PlanTier     @default(FREE) @map("plan_tier")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  users        UserOrganization[]
+  repositories Repository[]
+  apiKeys      ApiKey[]
+
+  @@map("organizations")
+}
+
+enum PlanTier {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ============================================
+// User
+// ============================================
+
+model User {
+  id        String   @id @default(uuid())
+  githubId  String   @unique @map("github_id")
+  email     String?
+  name      String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  organizations UserOrganization[]
+  apiKeys       ApiKey[]
+
+  @@map("users")
+}
+
+// ============================================
+// User-Organization Relationship
+// ============================================
+
+model UserOrganization {
+  id     String @id @default(uuid())
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId  String @map("org_id")
+  org    Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  role   OrgRole @default(MEMBER)
+  joinedAt DateTime @default(now()) @map("joined_at")
+
+  @@unique([userId, orgId])
+  @@map("user_organizations")
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ============================================
+// Repository
+// ============================================
+
+model Repository {
+  id             String         @id @default(uuid())
+  orgId          String         @map("org_id")
+  organization   Organization   @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  githubRepoId   String         @map("github_repo_id")
+  fullName       String         @map("full_name")
+  description    String?
+  defaultBranch  String         @default("main") @map("default_branch")
+  languages      String[]       @default([])
+  isPrivate      Boolean        @default(true) @map("is_private")
+
+  lastIndexedSha String?        @map("last_indexed_sha")
+  indexingStatus IndexingStatus @default(PENDING) @map("indexing_status")
+  chunkCount     Int            @default(0) @map("chunk_count")
+  fileCount      Int            @default(0) @map("file_count")
+  indexedAt      DateTime?      @map("indexed_at")
+  indexError     String?        @map("index_error")
+
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  indexJobs      IndexJob[]
+
+  @@unique([orgId, githubRepoId])
+  @@index([orgId])
+  @@index([indexingStatus])
+  @@map("repositories")
+}
+
+enum IndexingStatus {
+  PENDING
+  INDEXING
+  READY
+  ERROR
+}
+
+// ============================================
+// Index Job
+// ============================================
+
+model IndexJob {
+  id           String    @id @default(uuid())
+  repoId       String    @map("repo_id")
+  repository   Repository @relation(fields: [repoId], references: [id], onDelete: Cascade)
+
+  status       JobStatus @default(PENDING)
+  jobType      JobType   @map("job_type")
+  commitSha    String?   @map("commit_sha")
+
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+
+  filesTotal   Int       @default(0) @map("files_total")
+  filesProcessed Int     @default(0) @map("files_processed")
+  chunksCreated  Int     @default(0) @map("chunks_created")
+
+  errorMessage String?   @map("error_message")
+
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([repoId])
+  @@index([status])
+  @@map("index_jobs")
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum JobType {
+  FULL_INDEX
+  INCREMENTAL
+  REINDEX_FILE
+}
+
+// ============================================
+// API Key
+// ============================================
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId     String   @map("org_id")
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  name      String
+  keyHash   String   @unique @map("key_hash")
+  keyPrefix String   @map("key_prefix")
+
+  scopes    String[] @default(["read"])
+
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([orgId])
+  @@map("api_keys")
+}
+
+// ============================================
+// Webhook Event Log (for debugging)
+// ============================================
+
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  eventType   String   @map("event_type")
+  deliveryId  String?  @unique @map("delivery_id")
+  installationId Int   @map("installation_id")
+  repoFullName String? @map("repo_full_name")
+
+  payload     Json
+  processed   Boolean  @default(false)
+  processedAt DateTime? @map("processed_at")
+  error       String?
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([eventType])
+  @@index([installationId])
+  @@index([processed])
+  @@map("webhook_events")
+}
+
+// ============================================
+// Local Source (for local directory indexing)
+// ============================================
+
+model LocalSource {
+  id              String         @id @default(uuid())
+  path            String         @unique
+  name            String
+
+  indexingStatus  IndexingStatus @default(PENDING) @map("indexing_status")
+  lastIndexedAt   DateTime?      @map("last_indexed_at")
+
+  fileCount       Int            @default(0) @map("file_count")
+  chunkCount      Int            @default(0) @map("chunk_count")
+  summaryCount    Int            @default(0) @map("summary_count")
+  searchCount     Int            @default(0) @map("search_count")
+
+  // Snippet generation status
+  snippetCount    Int            @default(0) @map("snippet_count")
+  snippetStatus   SnippetStatus  @default(PENDING) @map("snippet_status")
+
+  // Wiki generation status
+  wikiStatus      WikiStatus     @default(PENDING) @map("wiki_status")
+
+  indexError      String?        @map("index_error")
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  files           FileMetadata[]
+  llmGenerations  LLMGeneration[]
+  snippets        Snippet[]
+
+  @@index([searchCount(sort: Desc)])
+  @@map("local_sources")
+}
+
+// ============================================
+// File Metadata (for incremental updates)
+// ============================================
+
+model FileMetadata {
+  id           String       @id @default(uuid())
+  sourceId     String       @map("source_id")
+  source       LocalSource  @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  filePath     String       @map("file_path")
+  absolutePath String       @map("absolute_path")
+
+  contentHash  String       @map("content_hash")
+  size         Int
+  language     String?
+
+  chunkCount   Int          @default(0) @map("chunk_count")
+  hasSummary   Boolean      @default(false) @map("has_summary")
+
+  lastModified DateTime     @map("last_modified")
+  lastIndexed  DateTime     @map("last_indexed")
+
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  @@unique([sourceId, filePath])
+  @@index([sourceId])
+  @@index([contentHash])
+  @@map("file_metadata")
+}
+
+// ============================================
+// LLM Generation Cache
+// ============================================
+
+model LLMGeneration {
+  id               String         @id @default(uuid())
+  sourceId         String         @map("source_id")
+  source           LocalSource    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  chunkId          String         @map("chunk_id")
+  contentHash      String         @map("content_hash")
+
+  generationType   GenerationType @map("generation_type")
+  provider         String
+  model            String
+
+  input            String         @db.Text
+  output           String         @db.Text
+
+  promptTokens     Int            @default(0) @map("prompt_tokens")
+  completionTokens Int            @default(0) @map("completion_tokens")
+
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  @@unique([chunkId, generationType, contentHash])
+  @@index([sourceId])
+  @@index([contentHash])
+  @@map("llm_generations")
+}
+
+enum GenerationType {
+  SUMMARY
+  COOKBOOK
+  API_DOC
+}
+
+// ============================================
+// Task (for tracking indexing jobs from CLI/Web)
+// ============================================
+
+model Task {
+  id              String       @id @default(uuid())
+
+  sourceId        String       @map("source_id")
+  sourceType      SourceType   @map("source_type")
+
+  taskType        TaskType     @map("task_type")
+  status          TaskStatus   @default(PENDING)
+  triggeredBy     TriggerType  @default(CLI) @map("triggered_by")
+
+  filesTotal      Int          @default(0) @map("files_total")
+  filesProcessed  Int          @default(0) @map("files_processed")
+  chunksCreated   Int          @default(0) @map("chunks_created")
+  summariesGenerated Int       @default(0) @map("summaries_generated")
+
+  startedAt       DateTime?    @map("started_at")
+  completedAt     DateTime?    @map("completed_at")
+  errorMessage    String?      @map("error_message")
+
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  logs            TaskLog[]
+
+  @@index([sourceId, sourceType])
+  @@index([status])
+  @@index([createdAt])
+  @@map("tasks")
+}
+
+model TaskLog {
+  id        String    @id @default(uuid())
+  taskId    String    @map("task_id")
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  level     LogLevel  @default(INFO)
+  phase     String?
+  message   String
+  filePath  String?   @map("file_path")
+  metadata  Json?
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([taskId])
+  @@index([taskId, createdAt])
+  @@map("task_logs")
+}
+
+enum SourceType {
+  LOCAL
+  REMOTE
+  REPOSITORY
+}
+
+enum TaskType {
+  FULL_INDEX
+  INCREMENTAL
+  REINDEX
+  SNIPPET_GENERATE
+  WIKI_GENERATE
+}
+
+enum TaskStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TriggerType {
+  CLI
+  WEB
+  WEBHOOK
+  SCHEDULED
+  WORKER
+}
+
+enum LogLevel {
+  DEBUG
+  INFO
+  WARN
+  ERROR
+}
+
+// ============================================
+// Remote Source (for GitHub/GitLab/Bitbucket repos)
+// ============================================
+
+model RemoteSource {
+  id              String          @id @default(uuid())
+  provider        RemoteProvider
+  repoUrl         String          @unique @map("repo_url")
+  fullName        String          @map("full_name")
+  description     String?
+
+  localPath       String?         @map("local_path")
+  defaultBranch   String          @default("main") @map("default_branch")
+
+  lastClonedAt    DateTime?       @map("last_cloned_at")
+  lastCommitSha   String?         @map("last_commit_sha")
+
+  indexingStatus  IndexingStatus  @default(PENDING) @map("indexing_status")
+  fileCount       Int             @default(0) @map("file_count")
+  chunkCount      Int             @default(0) @map("chunk_count")
+  summaryCount    Int             @default(0) @map("summary_count")
+  searchCount     Int             @default(0) @map("search_count")
+  indexError      String?         @map("index_error")
+
+  snippetCount    Int             @default(0) @map("snippet_count")
+  snippetStatus   SnippetStatus   @default(PENDING) @map("snippet_status")
+
+  // Wiki generation status
+  wikiStatus      WikiStatus      @default(PENDING) @map("wiki_status")
+
+  syncEnabled     Boolean         @default(true) @map("sync_enabled")
+  syncIntervalHrs Int             @default(24) @map("sync_interval_hrs")
+  lastSyncAt      DateTime?       @map("last_sync_at")
+
+  credentialId    String?         @map("credential_id")
+  credential      RemoteCredential? @relation(fields: [credentialId], references: [id], onDelete: SetNull)
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([provider])
+  @@index([indexingStatus])
+  @@index([searchCount(sort: Desc)])
+  @@map("remote_sources")
+}
+
+enum RemoteProvider {
+  GITHUB
+  GITLAB
+  BITBUCKET
+}
+
+// ============================================
+// Remote Credential (encrypted tokens)
+// ============================================
+
+model RemoteCredential {
+  id              String          @id @default(uuid())
+  provider        RemoteProvider
+  name            String
+
+  encryptedToken  String          @map("encrypted_token")
+  tokenIv         String          @map("token_iv")
+  tokenTag        String          @map("token_tag")
+
+  lastUsedAt      DateTime?       @map("last_used_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  sources         RemoteSource[]
+
+  @@map("remote_credentials")
+}
+
+// ============================================
+// Snippet (Knowledge Base Entries)
+// ============================================
+
+model Snippet {
+  id              String          @id @default(uuid())
+  sourceId        String          @map("source_id")
+  source          LocalSource     @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceType      SourceType      @default(LOCAL) @map("source_type")
+
+  // Content
+  title           String          // Task-oriented title "Install JVM on Ubuntu"
+  description     String          @db.Text // Context description
+  content         String          @db.Text // Code content
+  language        String          // Code language
+
+  // Source tracking
+  sourceUrl       String?         @map("source_url") // Source: URL
+  sourceFilePath  String          @map("source_file_path")
+  startLine       Int?            @map("start_line")
+  endLine         Int?            @map("end_line")
+
+  // Related original chunks
+  sourceChunkIds  String[]        @map("source_chunk_ids")
+
+  // Classification
+  category        SnippetCategory @default(OTHER)
+  keywords        String[]        @default([])
+
+  // Statistics
+  tokenCount      Int             @default(0) @map("token_count")
+
+  // Vector ID (Qdrant)
+  vectorId        String?         @map("vector_id")
+
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  @@index([sourceId, sourceType])
+  @@index([category])
+  @@map("snippets")
+}
+
+enum SnippetCategory {
+  INSTALLATION    // Installation/Configuration
+  ARCHITECTURE    // Project architecture overview
+  API_USAGE       // API usage examples
+  WORKFLOW        // Workflow/Integration patterns
+  EXAMPLE         // Code examples
+  TROUBLESHOOT    // Problem solving
+  OTHER
+}
+
+enum SnippetStatus {
+  PENDING
+  GENERATING
+  READY
+  ERROR
+}
+
+// ============================================
+// Wiki Status
+// ============================================
+
+enum WikiStatus {
+  PENDING
+  GENERATING_STRUCTURE
+  GENERATING_PAGES
+  READY
+  ERROR
+}
+
+enum WikiImportance {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+// ============================================
+// Wiki Structure (DeepWiki feature)
+// ============================================
+
+model WikiStructure {
+  id              String         @id @default(uuid())
+  sourceId        String         @map("source_id")
+  sourceType      SourceType     @map("source_type")
+
+  title           String
+  description     String         @db.Text
+
+  status          WikiStatus     @default(PENDING)
+  errorMessage    String?        @map("error_message")
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  pages           WikiPage[]
+
+  @@unique([sourceId, sourceType])
+  @@index([sourceId, sourceType])
+  @@map("wiki_structures")
+}
+
+model WikiPage {
+  id              String         @id @default(uuid())
+  structureId     String         @map("structure_id")
+  structure       WikiStructure  @relation(fields: [structureId], references: [id], onDelete: Cascade)
+
+  pageId          String         @map("page_id")  // Logical ID within the wiki
+  title           String
+  content         String         @db.Text
+
+  importance      WikiImportance @default(MEDIUM)
+  order           Int            @default(0)
+
+  // Source file references
+  filePaths       String[]       @map("file_paths")
+  relatedPageIds  String[]       @map("related_page_ids")
+
+  // Hierarchy support
+  parentPageId    String?        @map("parent_page_id")
+  isSection       Boolean        @default(false) @map("is_section")
+
+  // Vector embedding for semantic search
+  vectorId        String?        @map("vector_id")
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@unique([structureId, pageId])
+  @@index([structureId])
+  @@index([parentPageId])
+  @@map("wiki_pages")
+}
+
+// ============================================
+// Settings (Global Configuration)
+// ============================================
+
+model Settings {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}

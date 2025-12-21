@@ -1,0 +1,29 @@
+{
+  "name": "@context8/indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@context8/database": "workspace:*",
+    "@context8/parser": "workspace:*",
+    "@context8/types": "workspace:*",
+    "ignore": "^5.3.1",
+    "fast-glob": "^3.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "@types/node": "^20.10.0"
+  }
+}
