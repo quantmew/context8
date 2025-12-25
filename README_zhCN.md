@@ -22,6 +22,12 @@ Context8 是一个面向私有代码仓库的智能上下文平台，功能对�
 
 ![Cookbook](docs/screenshots/project.png)
 
+### Wiki 文档
+
+自动生成的代码库 Wiki 文档，提供结构化导航和全面的指南。
+
+![Wiki](docs/screenshots/wiki.png)
+
 ### 语义搜索
 
 跨代码库进行语义搜索，支持按 Token 限制过滤结果，可选择 Code 或 Info 模式。

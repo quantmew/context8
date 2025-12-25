@@ -24,6 +24,12 @@ Manage indexed codebases, add local directories or remote repositories.
 
 ![Cookbook](docs/screenshots/project.png)
 
+### Wiki Documentation
+
+Auto-generated wiki documentation for your codebase, providing structured navigation and comprehensive guides.
+
+![Wiki](docs/screenshots/wiki.png)
+
 ### Semantic Search
 
 Cross-codebase semantic search with token limit filtering, supporting Code or Info mode.
