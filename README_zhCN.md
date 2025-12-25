@@ -18,6 +18,10 @@ Context8 是一个面向私有代码仓库的智能上下文平台，功能对�
 
 ![首页](docs/screenshots/home.png)
 
+### Context7 般的菜谱
+
+![Cookbook](docs/screenshots/project.png)
+
 ### 语义搜索
 
 跨代码库进行语义搜索，支持按 Token 限制过滤结果，可选择 Code 或 Info 模式。

@@ -18,6 +18,10 @@ Manage indexed codebases, add local directories or remote repositories.
 
 ![Home](docs/screenshots/home.png)
 
+### Context7 like Cookbook
+
+![Cookbook](docs/screenshots/project.png)
+
 ### Semantic Search
 
 Cross-codebase semantic search with token limit filtering, supporting Code or Info mode.
