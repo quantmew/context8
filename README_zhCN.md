@@ -210,6 +210,12 @@ pnpm typecheck
 pnpm test
 ```
 
+## 联系作者
+
+加作者微信拉你进 context8 天使群
+
+![微信](docs/assets/wechat_personal.png)
+
 ## 许可证
 
 MIT

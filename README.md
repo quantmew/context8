@@ -1,5 +1,7 @@
 # Context8
 
+[中文介绍](README_zhCN.md)
+
 Context8 is an intelligent context platform for private code repositories, similar to [Context7](https://context7.com). It provides semantic retrieval capabilities for private codebases to AI coding assistants (Cursor, Claude Desktop, Windsurf) via the MCP (Model Context Protocol).
 
 ## Features
